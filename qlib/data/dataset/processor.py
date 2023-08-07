@@ -418,3 +418,81 @@ class TimeRangeFlt(InstProcessor):
         ):
             return df
         return df.head(0)
+
+class CustomizeProcessor(Processor):
+
+    def __init__(self, fit_start_time, fit_end_time, fields_group=None):
+        self.fit_start_time = fit_start_time
+        self.fit_end_time = fit_end_time
+        self.fields_group = fields_group
+    
+    def fit(self, df: pd.DataFrame = None):
+        df = fetch_df_by_index(df, slice(self.fit_start_time, self.fit_end_time), level="datetime")
+
+    def __call__(self, df: pd.DataFrame):
+        
+        def save_data(data, path):
+            savedata = data[0:1000,0:6]
+            if not os.path.exists(path):
+                np.savetxt(path,savedata,'%f',delimiter=',')
+            else:
+                print("Warning: file already exists!!")
+                
+        def DA_Jitter(X, sigma=0.05):
+            myNoise = np.random.normal(loc=0, scale=sigma, size=X.shape)
+            return X+myNoise
+        
+        def DA_Scaling(X, sigma=0.1):
+            scalingFactor = np.random.normal(loc=1.0, scale=sigma, size=(1,X.shape[1])) # shape=(1,120)
+            myNoise = np.matmul(np.ones((X.shape[0],1)), scalingFactor)
+            return X*myNoise
+        
+        def GenerateRandomCurves(X, sigma=0.2, knot=4):
+            xx = (np.ones((X.shape[1],1))*(np.arange(0,X.shape[0], (X.shape[0]-1)/(knot+1)))).transpose()
+            yy = np.random.normal(loc=1.0, scale=sigma, size=(knot+2, X.shape[1]))
+            x_range = np.arange(X.shape[0])
+            data = []
+            for i in range(0,120):
+                cs = CubicSpline(xx[:,i],yy[:,i])
+                data.append(cs(x_range))
+            return np.array(data).transpose()
+       
+        def DA_MagWarp(X, sigma=0.2):
+            return X * GenerateRandomCurves(X, sigma)
+        
+        def AugmentTS(data, sigma=0.2):
+            data = np.expand_dims(data,axis=1)
+            vae = LSTMVAE(series_len=120)
+            augmenter = VAEAugmenter(vae)
+            augmenter.fit(data, epochs=50, batch_size=32)
+
+            samples = augmenter.sample(n=10000)
+            samples = np.squeeze(samples)
+           
+            return samples
+
+        
+        # rename the instruments
+        def test_map(x):
+            return x+'s'
+        
+        use_data = np.array(df.iloc[0:10000,0:120]).reshape(-1,120)
+        new_data = DA_Scaling(use_data,0.3)
+
+        filename = "./aug_data/front_augTS_init.csv"
+        save_data(use_data,filename)
+        
+        filename = './front_augTS_aug.csv'
+        save_data(new_data,filename)
+       
+        
+        df2 = df.copy().iloc[0:10000,:]
+        for i in range(0,10000):
+            for j in range(0,120):
+                df2.iloc[i,j] = new_data[i][j]
+        df2 = df2.rename(index=test_map,level=1)
+        # print(df2.index.tolist()[0])
+        df3 = pd.concat([df,df2])
+      
+        df3 = df3.sort_index()
+        return df3
