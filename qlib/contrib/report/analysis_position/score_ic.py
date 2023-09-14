@@ -55,6 +55,13 @@ def score_ic_graph(pred_label: pd.DataFrame, show_notebook: bool = True, **kwarg
     """
     _ic_df = _get_score_ic(pred_label)
 
+    # print("data shape: {}".format(_ic_df.shape))
+    # _ic_df.to_csv("D:\\summer_prj\\qlib\\results\\front_Permutation03.csv",sep=',')
+    
+    mean = _ic_df.mean()
+    print("mean score IC:")
+    print(mean)
+
     _figure = ScatterGraph(
         _ic_df,
         layout=dict(
