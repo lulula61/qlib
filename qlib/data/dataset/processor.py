@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from qlib.utils.data import robust_zscore, zscore
-from qlib.utils.augmentor import *
+from qlib.utils.augmentor import Augmentator
 from ...constant import EPS
 from .utils import fetch_df_by_index
 from ...utils.serial import Serializable
@@ -337,12 +337,12 @@ class CSRankNorm(Processor):
 
     Explanation about 3.46 & 0.5
 
-    .. code-block:: python
+    .. code-block:: pythond
+        x = np.random.random(10000)  # for any variable
+        x_rank = pd.Ser
 
         import numpy as np
-        import pandas as pd
-        x = np.random.random(10000)  # for any variable
-        x_rank = pd.Series(x).rank(pct=True)  # if it is converted to rank, it will be a uniform distributed
+        import pandas as pies(x).rank(pct=True)  # if it is converted to rank, it will be a uniform distributed
         x_rank_norm = (x_rank - x_rank.mean()) / x_rank.std()  # Normally, we will normalize it to make it like normal distribution
 
         x_rank.mean()   # accounts for 0.5
@@ -439,7 +439,7 @@ class CustomizeProcessor(Processor):
         # 如果这里返回df的引用，readonly里面需要return False
         # 如果返回的是与传入df_orignal不同内存地址的df_new，readonly里面需要return True
         def save_data(data, path):
-            savedata = data[0:1000,0:6]
+            savedata = data[0:200,0:6]
             if not os.path.exists(path):
                 np.savetxt(path,savedata,'%f',delimiter=',')
             else:
@@ -451,19 +451,23 @@ class CustomizeProcessor(Processor):
 
 
         # (752837, 120)
-        use_data = np.array(df.iloc[0:10000,0:120]).reshape(-1,120)
-        new_data = AugmentTS(use_data)
+        len = 40000
+        sigma = 0.1
+        use_data = np.array(df.iloc[0:len,0:120]).reshape(-1,120)
+        print(use_data.shape[0])
+        augmentor = Augmentator()
+        new_data = augmentor.DA_Scaling(use_data, sigma)
         
 
-        filename = "D:\\summer_prj\\qlib\\aug_data\\front_AugTS_init.csv"
-        save_data(use_data,filename)
+        # filename = "D:\\summer_prj\\qlib\\aug_data\\timeWarp_init.csv"
+        # save_data(use_data,filename)
         
-        filename = 'D:\\summer_prj\\qlib\\aug_data\\front_AugTS_aug.csv'
-        save_data(new_data,filename)
+        # filename = 'D:\\summer_prj\\qlib\\aug_data\\timeWarp_aug.csv'
+        # save_data(new_data,filename)
        
         
-        df2 = df.copy().iloc[0:10000,:]
-        for i in range(0,10000):
+        df2 = df.copy().iloc[0:len,:]
+        for i in range(0,len):
             for j in range(0,120):
                 df2.iloc[i,j] = new_data[i][j]
         df2 = df2.rename(index=test_map,level=1)
